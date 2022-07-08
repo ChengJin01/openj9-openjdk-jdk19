@@ -23,6 +23,13 @@
  *  questions.
  *
  */
+
+/*
+ * ===========================================================================
+ * (c) Copyright IBM Corp. 2022, 2022 All Rights Reserved
+ * ===========================================================================
+ */
+
 package java.lang.foreign;
 
 import java.lang.invoke.MethodHandles;
@@ -39,6 +46,7 @@ import jdk.internal.misc.Unsafe;
 import jdk.internal.vm.annotation.ForceInline;
 import jdk.internal.vm.annotation.Stable;
 import sun.invoke.util.Wrapper;
+import sun.security.action.GetPropertyAction;
 
 /**
  * A value layout. A value layout is used to model the memory layout associated with values of basic data types, such as <em>integral</em> types
@@ -63,6 +71,7 @@ public sealed class ValueLayout extends AbstractLayout implements MemoryLayout {
     private final ByteOrder order;
 
     private static final int ADDRESS_SIZE_BITS = Unsafe.ADDRESS_SIZE * 8;
+    private static final boolean isAixOS = GetPropertyAction.privilegedGetProperty("os.name").startsWith("AIX");
 
     ValueLayout(Class<?> carrier, ByteOrder order, long size) {
         this(carrier, order, size, size, Optional.empty());
@@ -613,8 +622,9 @@ public sealed class ValueLayout extends AbstractLayout implements MemoryLayout {
      *             .withBitAlignment(<address size>);
      * }
      */
-    public static final OfAddress ADDRESS = new OfAddress(ByteOrder.nativeOrder())
-            .withBitAlignment(ValueLayout.ADDRESS_SIZE_BITS);
+    public static final OfAddress ADDRESS = isAixOS ?
+    		(new OfAddress(ByteOrder.nativeOrder()).withBitAlignment(8))
+    		: (new OfAddress(ByteOrder.nativeOrder()).withBitAlignment(ValueLayout.ADDRESS_SIZE_BITS));
 
     /**
      * A value layout constant whose size is the same as that of a Java {@code byte},
@@ -674,8 +684,9 @@ public sealed class ValueLayout extends AbstractLayout implements MemoryLayout {
      * MemoryLayout.valueLayout(long.class, ByteOrder.nativeOrder()).withBitAlignment(64);
      * }
      */
-    public static final OfLong JAVA_LONG = new OfLong(ByteOrder.nativeOrder())
-            .withBitAlignment(64);
+    public static final OfLong JAVA_LONG = isAixOS ? 
+    		(new OfLong(ByteOrder.nativeOrder()).withBitAlignment(8))
+    		: (new OfLong(ByteOrder.nativeOrder()).withBitAlignment(64));
 
     /**
      * A value layout constant whose size is the same as that of a Java {@code float},
@@ -695,5 +706,7 @@ public sealed class ValueLayout extends AbstractLayout implements MemoryLayout {
      * MemoryLayout.valueLayout(double.class, ByteOrder.nativeOrder()).withBitAlignment(64);
      * }
      */
-    public static final OfDouble JAVA_DOUBLE = new OfDouble(ByteOrder.nativeOrder()).withBitAlignment(64);
+    public static final OfDouble JAVA_DOUBLE = isAixOS ? 
+    		(new OfDouble(ByteOrder.nativeOrder()).withBitAlignment(8))
+    		: (new OfDouble(ByteOrder.nativeOrder()).withBitAlignment(64));
 }
