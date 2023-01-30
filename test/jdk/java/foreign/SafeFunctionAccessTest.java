@@ -184,7 +184,7 @@ public class SafeFunctionAccessTest extends NativeTestHelper {
             MethodHandle handle = MethodHandles.lookup().findStatic(SafeFunctionAccessTest.class, "checkSession",
                     MethodType.methodType(void.class, MemorySession.class));
             handle = handle.bindTo(session);
-            return Linker.nativeLinker().upcallStub(handle, FunctionDescriptor.ofVoid(), MemorySession.openImplicit());
+            return Linker.nativeLinker().upcallStub(handle, FunctionDescriptor.ofVoid(), MemorySession.global());
         } catch (Throwable ex) {
             throw new AssertionError(ex);
         }
