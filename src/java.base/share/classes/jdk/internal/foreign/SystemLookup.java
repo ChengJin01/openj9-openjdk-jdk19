@@ -87,10 +87,23 @@ public class SystemLookup implements SymbolLookup {
         return name -> {
             Objects.requireNonNull(name);
             try {
-                long addr = lib.lookup(name);
-                return (addr == 0) ?
-                        Optional.empty() :
-                        Optional.of(MemorySegment.ofAddress(MemoryAddress.ofLong(addr), 0, MemorySession.global()));
+                MemoryAddress funcAddr = null;
+                AixFuncSymbols symbol = AixFuncSymbols.valueOfOrNull(name);
+                if (symbol == null) {
+                    /* Look up the libc functions in the default library. */
+                    funcAddr = MemoryAddress.ofLong(lib.lookup(name));
+                } else {
+                    /* Directly load the specified library with the libc functions
+                     * missing in the default library.
+                     */
+                    SymbolLookup funcsLibLookup =
+                            libLookup(libs -> libs.load(jdkLibraryPath("syslookup")));
+                    MemorySegment funcs = MemorySegment.ofAddress(funcsLibLookup.lookup("funcs").orElseThrow().address(),
+                        ADDRESS.byteSize() * AixFuncSymbols.values().length, MemorySession.global());
+                    funcAddr = funcs.getAtIndex(ADDRESS, symbol.ordinal());
+                }
+
+                return Optional.of(MemorySegment.ofAddress(funcAddr, 0L, MemorySession.global()));
             } catch (NoSuchMethodException e) {
                 return Optional.empty();
             }
@@ -225,6 +238,21 @@ public class SystemLookup implements SymbolLookup {
         ;
 
         static WindowsFallbackSymbols valueOfOrNull(String name) {
+            try {
+                return valueOf(name);
+            } catch (IllegalArgumentException e) {
+                return null;
+            }
+        }
+    }
+
+    /* Fallback symbols missing from the existing lookup */
+    public enum AixFuncSymbols {
+        /* string */
+        strcat
+        ;
+
+        static AixFuncSymbols valueOfOrNull(String name) {
             try {
                 return valueOf(name);
             } catch (IllegalArgumentException e) {
